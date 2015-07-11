@@ -39,6 +39,7 @@ import com.citrus.sdk.classes.AccessToken;
 import com.citrus.sdk.classes.Amount;
 import com.citrus.sdk.classes.BindPOJO;
 import com.citrus.sdk.classes.CashoutInfo;
+import com.citrus.sdk.classes.PGHealth;
 import com.citrus.sdk.classes.PGHealthResponse;
 import com.citrus.sdk.payment.CardOption;
 import com.citrus.sdk.payment.CreditCardOption;
@@ -56,12 +57,16 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.orhanobut.logger.Logger;
 
+import org.apache.http.HttpStatus;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import de.greenrobot.event.EventBus;
@@ -94,7 +99,7 @@ public class CitrusClient {
     private Environment environment = Environment.SANDBOX;
     private Amount balanceAmount;
     private static CitrusClient instance;
-    private Context mContext;
+    private final Context mContext;
     private SharedPreferences mSharedPreferences;
     private MerchantPaymentOption merchantPaymentOption = null;
 
@@ -103,6 +108,7 @@ public class CitrusClient {
     private OauthToken oauthToken = null;
     private CookieManager cookieManager;
     private BroadcastReceiver paymentEventReceiver = null;
+    private Map<String, PGHealth> pgHealthMap = null;
 
     private CitrusClient(Context context) {
         mContext = context;
@@ -155,6 +161,46 @@ public class CitrusClient {
         }
         Logger.d("VANITY*** " + vanity);
         EventsManager.logInitSDKEvents(mContext);
+
+        fetchPGHealthForAllBanks();
+    }
+
+    private void fetchPGHealthForAllBanks() {
+
+        RetroFitClient.setEndPoint(environment.getBaseCitrusUrl());
+
+        retrofitClient.getPGHealthForAllBanks(vanity, "ALLBANKS", new retrofit.Callback<JsonElement>() {
+                    @Override
+                    public void success(JsonElement jsonElement, Response response) {
+                        RetroFitClient.resetEndPoint();
+
+                        try {
+                            JSONObject jsonObject = new JSONObject(jsonElement.toString());
+                            Iterator<String> keys = jsonObject.keys();
+                            while (keys.hasNext()) {
+                                if (pgHealthMap == null) {
+                                    pgHealthMap = new HashMap<String, PGHealth>();
+                                }
+                                String key = keys.next();
+                                String health = jsonObject.optString(key);
+
+                                pgHealthMap.put(key, PGHealth.getPGHealth(health));
+                            }
+
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+                    @Override
+                    public void failure(RetrofitError error) {
+                        RetroFitClient.resetEndPoint();
+
+                        Logger.e("Error while fetching the health");
+                    }
+                }
+        );
+
     }
 
     private void saveSDKEnvironment() {
@@ -308,14 +354,14 @@ public class CitrusClient {
     }
 
     /**
-     * @param emailIdOrMobileNo
+     * @param emailId
      * @param password
      * @param callback
      */
-    public synchronized void signIn(final String emailIdOrMobileNo, final String password, final Callback<CitrusResponse> callback) {
+    public synchronized void signIn(final String emailId, final String password, final Callback<CitrusResponse> callback) {
 
         //grant Type username token saved
-        retrofitClient.getSignInToken(signinId, signinSecret, emailIdOrMobileNo, OAuth2GrantType.username.toString(), new retrofit.Callback<AccessToken>() {
+        retrofitClient.getSignInToken(signinId, signinSecret, emailId, OAuth2GrantType.username.toString(), new retrofit.Callback<AccessToken>() {
 
             @Override
             public void success(AccessToken accessToken, Response response) {
@@ -323,17 +369,17 @@ public class CitrusClient {
                     OauthToken token = new OauthToken(mContext, SIGNIN_TOKEN);
                     token.createToken(accessToken.getJSON());///grant Type username token saved
 
-                    retrofitClient.getSignInWithPasswordResponse(signinId, signinSecret, emailIdOrMobileNo, password, OAuth2GrantType.password.toString(), new retrofit.Callback<AccessToken>() {
+                    retrofitClient.getSignInWithPasswordResponse(signinId, signinSecret, emailId, password, OAuth2GrantType.password.toString(), new retrofit.Callback<AccessToken>() {
                         @Override
                         public void success(AccessToken accessToken, Response response) {
                             Logger.d("SIGN IN RESPONSE " + accessToken.getJSON().toString());
                             if (accessToken.getHeaderAccessToken() != null) {
                                 OauthToken token = new OauthToken(mContext, PREPAID_TOKEN);
                                 token.createToken(accessToken.getJSON());///grant Type password token saved
-                                token.saveUserDetails(emailIdOrMobileNo, null);//save email ID of the signed in user
+                                token.saveUserDetails(emailId, null);//save email ID of the signed in user
                                 RetroFitClient.setInterCeptor();
                                 EventBus.getDefault().register(CitrusClient.this);
-                                retrofitClient.getCookie(emailIdOrMobileNo, password, "true", new retrofit.Callback<String>() {
+                                retrofitClient.getCookie(emailId, password, "true", new retrofit.Callback<String>() {
                                     @Override
                                     public void success(String s, Response response) {
                                         // NOOP
@@ -378,6 +424,44 @@ public class CitrusClient {
             }
         });
     }
+
+    public synchronized void getCookie(String email, String password, final Callback<CitrusResponse> callback) {
+        RetroFitClient.setInterCeptor();
+        EventBus.getDefault().register(CitrusClient.this);
+        retrofitClient.getCookie(email, password, "true", new retrofit.Callback<String>() {
+            @Override
+            public void success(String s, Response response) {
+                // NOOP
+                // This method will never be called.
+            }
+
+            @Override
+            public void failure(RetrofitError error) {
+                EventBus.getDefault().unregister(CitrusClient.this);
+
+                if (error.getResponse().getStatus() == HttpStatus.SC_INTERNAL_SERVER_ERROR) { //Invalid Password for COOKIE
+                    CitrusError citrusError = new CitrusError(ResponseMessages.ERROR_MESSAGE_INVALID_PASSWORD, Status.FAILED);
+                    callback.error(citrusError);
+                } else {
+                    if (prepaidCookie != null) {
+                        cookieManager = CookieManager.getInstance();
+                        PersistentConfig config = new PersistentConfig(mContext);
+                        if (config.getCookieString() != null) {
+                            cookieManager.getInstance().removeSessionCookie();
+                        }
+                        CookieSyncManager.createInstance(mContext);
+                        config.setCookie(prepaidCookie);
+                    } else {
+                        Logger.d("PREPAID LOGIN UNSUCCESSFUL");
+                    }
+
+                    // Since we have a got the cookie, we are giving the callback.
+                    sendResponse(callback, new CitrusResponse(ResponseMessages.SUCCESS_COOKIE_SIGNIN, Status.SUCCESSFUL));
+                }
+            }
+        });
+    }
+
 
     /**
      * Signout the existing logged in user.
@@ -529,7 +613,13 @@ public class CitrusClient {
                                                     walletList.add(option);
                                                 } else if (option instanceof NetbankingOption && netbankingOptionList != null &&
                                                         netbankingOptionList.contains(option)) {
-                                                    walletList.add(option);
+                                                    NetbankingOption netbankingOption = (NetbankingOption) option;
+
+                                                    if (pgHealthMap != null) {
+                                                        netbankingOption.setPgHealth(pgHealthMap.get(netbankingOption.getBankCID()));
+                                                    }
+
+                                                    walletList.add(netbankingOption);
                                                 }
                                             } else {
                                                 // If the merchant payment options are not found, save all the options.
@@ -808,8 +898,6 @@ public class CitrusClient {
 
     /**
      * Returns the access token of the currently logged in user.
-     *
-     * @return
      */
     public void getPrepaidToken(final Callback<AccessToken> callback) {
 
@@ -839,7 +927,7 @@ public class CitrusClient {
                 @Override
                 public void success(JsonElement element, Response response) {
 
-                    MerchantPaymentOption merchantPaymentOption = null;
+                    MerchantPaymentOption merchantPaymentOption;
 
                     if (element.isJsonObject()) {
                         JsonObject paymentOptionObj = element.getAsJsonObject();
@@ -878,7 +966,7 @@ public class CitrusClient {
                 @Override
                 public void success(JsonElement element, Response response) {
 
-                    MerchantPaymentOption merchantPaymentOption = null;
+                    MerchantPaymentOption merchantPaymentOption;
 
                     if (element.isJsonObject()) {
                         JsonObject paymentOptionObj = element.getAsJsonObject();
@@ -1063,7 +1151,7 @@ public class CitrusClient {
     // PG Health.
 
     /**
-     * It returns {@link com.citrus.sdk.classes.PGHealthResponse.PGHealth} which denotes the health of the PG.
+     * It returns {@link com.citrus.sdk.classes.PGHealth} which denotes the health of the PG for in
      * If the health is bad merchants can warn user to use another payment method.
      *
      * @param paymentOption
@@ -1073,7 +1161,7 @@ public class CitrusClient {
 
         // Currently PG health supports netbanking only. So in case of any other payment Options it will return GOOD by default.
         if (!(paymentOption instanceof NetbankingOption)) {
-            sendResponse(callback, new PGHealthResponse(PGHealthResponse.PGHealth.GOOD, "All Good"));
+            sendResponse(callback, new PGHealthResponse(PGHealth.GOOD, "All Good"));
         } else {
             RetroFitClient.setEndPoint(environment.getBaseCitrusUrl());
 
@@ -1182,13 +1270,13 @@ public class CitrusClient {
     private void sendError(Callback callback, RetrofitError error) {
         if (callback != null) {
             String message = null;
-            CitrusError citrusError = null;
+            CitrusError citrusError;
 
             // Check whether the error is network error.
             if (error.getKind() == RetrofitError.Kind.NETWORK) {
                 citrusError = new CitrusError(ResponseMessages.ERROR_NETWORK_CONNECTION, Status.FAILED);
             } else {
-                if (error != null && error.getResponse() != null && error.getResponse().getBody() != null) {
+                if (error.getResponse() != null && error.getResponse().getBody() != null) {
                     message = new String(((TypedByteArray) error.getResponse().getBody()).getBytes());
                 }
 
