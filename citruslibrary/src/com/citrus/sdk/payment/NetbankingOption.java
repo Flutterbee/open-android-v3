@@ -15,8 +15,11 @@ package com.citrus.sdk.payment;
 
 import android.content.Context;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
+
+import com.citrus.sdk.classes.PGHealth;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -51,7 +54,7 @@ public final class NetbankingOption extends PaymentOption implements Parcelable 
     /**
      * Use this constructor for tokenized payments.
      *
-     * @param token
+     * @param token Token of the bank
      */
     public NetbankingOption(String token) {
         super(null, token);
@@ -83,9 +86,14 @@ public final class NetbankingOption extends PaymentOption implements Parcelable 
     }
 
     @Override
+    public void setPgHealth(PGHealth pgHealth) {
+        super.setPgHealth(pgHealth);
+    }
+
+    @Override
     public com.citrus.analytics.PaymentType getAnalyticsPaymentType() {
         com.citrus.analytics.PaymentType paymentType = com.citrus.analytics.PaymentType.NET_BANKING;
-        paymentType.setName(bankName!=null?bankName:bankCID);
+        paymentType.setName(bankName != null ? bankName : bankCID);
         return paymentType;
     }
 
@@ -159,14 +167,16 @@ public final class NetbankingOption extends PaymentOption implements Parcelable 
             resourceId = context.getResources().getIdentifier("vijaya_bank", "drawable", context.getPackageName());
         } else if ("YES Bank".equalsIgnoreCase(bankName)) {
             resourceId = context.getResources().getIdentifier("yes_bank", "drawable", context.getPackageName());
+        } else {
+            resourceId = context.getResources().getIdentifier("default_bank", "drawable", context.getPackageName());
         }
 
-        if (resourceId == 0) {
-            if ((resourceId = context.getResources().getIdentifier("default_bank", "drawable", context.getPackageName())) != 0) {
+        if (resourceId != 0) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                drawable = context.getResources().getDrawable(resourceId, null);
+            } else {
                 drawable = context.getResources().getDrawable(resourceId);
             }
-        } else {
-            drawable = context.getResources().getDrawable(resourceId);
         }
 
         return drawable;
@@ -191,7 +201,7 @@ public final class NetbankingOption extends PaymentOption implements Parcelable 
             e.printStackTrace();
         }
 
-        return object != null ? object.toString():null;
+        return object.toString();
     }
 
     @Override

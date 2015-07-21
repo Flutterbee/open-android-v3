@@ -37,7 +37,6 @@ import retrofit.http.Headers;
 import retrofit.http.POST;
 import retrofit.http.PUT;
 import retrofit.http.Path;
-import retrofit.http.Query;
 import retrofit.mime.TypedString;
 
 /**
@@ -82,6 +81,11 @@ public interface API {
     @POST("/oauth/token")
     void getRefreshTokenAsync(@Field("client_id") String client_ID, @Field("client_secret") String client_Secret, @Field("grant_type") String grantType, @Field("refresh_token") String refreshToken, Callback<AccessToken> accessTokenPOJOCallback);
 
+    // MemberInfo API
+    @Headers("Content-Type: application/json")
+    @POST("/service/um/profile/memberInfo")
+    void getMemberInfo(@Header("Authorization") String header, @Body TypedString body, Callback<JsonElement> callback);
+
     //payment options of merchant
     @FormUrlEncoded
     @POST("/service/v2/identity/passwords/reset")
@@ -115,7 +119,7 @@ public interface API {
 
     //bill generator response
     @GET("/{path}")
-    void getBill(@Path("path") String path, @Query("amount") String amount, Callback<JsonElement> callback);
+    void getBill(@Path(value = "path", encode = false) String path, Callback<JsonElement> callback);
 
     // Save payment option
     @Headers("Content-Type: application/json")
@@ -158,6 +162,10 @@ public interface API {
     @POST("/utility/{path}/pgHealth")
     void getPGHealth(@Path("path") String path, @Field("bankCode") String bankCode, Callback<PGHealthResponse> callback);
 
+    // PG Health API
+    @FormUrlEncoded
+    @POST("/utility/{path}/pgHealth")
+    void getPGHealthForAllBanks(@Path("path") String path, @Field("bankCode") String bankCode, Callback<JsonElement> callback);
 
     // The response is 204 No Content.
     @DELETE("/service/v2/profile/me/payment/{last4Digits}:{scheme}")

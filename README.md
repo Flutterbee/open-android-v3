@@ -1,6 +1,8 @@
 # open-android-v3
 Enhanced Payment SDK 
 
+Last updated : 08/07/2015
+
 What's new?
 open-android-v3 is enhanced version of SDK V2. 
 
@@ -11,6 +13,7 @@ open-android-v3 is enhanced version of SDK V2.
    5.	Support for Citrus Cash.
    6.	Added support to gradle/Android Studio
    7. Less Integration Time Required.
+   8. Zero click payment using Citrus Cash.
 
 <b> Prerequisite </>
    You must already have installed and configured:
@@ -204,7 +207,7 @@ This feature is used for loading money to Citrus wallet.
       Amount amount = new Amount("5"); 
             
       // Init Load Money PaymentType     
-      PaymentType.LoadMoney loadMoney = new PaymentType.LoadMoney(amount, RETURN_URL_LOAD_MONEY,            debitCardOption);
+      PaymentType.LoadMoney loadMoney = new PaymentType.LoadMoney(amount, LOAD_MONEY_RETURN_URL,            debitCardOption);
       
       // Call Load Money
       citrusClient.loadMoney(loadMoney, new Callback<TransactionResponse>() {
@@ -225,7 +228,7 @@ This feature is used for loading money to Citrus wallet.
       
       Amount amount = new Amount("5");
       // Init Load Money PaymentType     
-      PaymentType.LoadMoney loadMoney = new PaymentType.LoadMoney(amount, RETURN_URL_LOAD_MONEY, creditCardOption);
+      PaymentType.LoadMoney loadMoney = new PaymentType.LoadMoney(amount, LOAD_MONEY_RETURN_URL, creditCardOption);
       
       citrusClient.loadMoney(loadMoney, new Callback<TransactionResponse>() {
       
@@ -244,7 +247,7 @@ This feature is used for loading money to Citrus wallet.
       NetbankingOption netbankingOptio = new NetbankingOption(“ICICI Bank” ,”CID001”);
       
       // Init Net Banking PaymentType     
-      PaymentType.LoadMoney loadMoney = new PaymentType.LoadMoney(amount, BILL_URL, netbankingOption, new CitrusUser("developercitrus@gmail.com","9876543210"));
+      PaymentType.LoadMoney loadMoney = new PaymentType.LoadMoney(amount, LOAD_MONEY_RETURN_URL, netbankingOption, new CitrusUser("developercitrus@gmail.com","9876543210"));
       
       citrusClient.loadMoney(loadMoney, new Callback<TransactionResponse>() {
       
@@ -264,7 +267,7 @@ This feature is used for loading money to Citrus wallet.
       //Note: The Token for sandbox and production will be different
       
       // Init PaymentType     
-      PaymentType.LoadMoney loadMoney = new PaymentType.LoadMoney(amount, BILL_URL, debitCardOption, new CitrusUser("developercitrus@gmail.com","9876543210"));
+      PaymentType.LoadMoney loadMoney = new PaymentType.LoadMoney(amount, LOAD_MONEY_RETURN_URL, debitCardOption, new CitrusUser("developercitrus@gmail.com","9876543210"));
       
       citrusClient.LoadMoney(loadMoney, new Callback<TransactionResponse>() {
          
@@ -284,7 +287,7 @@ This feature is used for loading money to Citrus wallet.
       //Note: The Token for sandbox and production will be different
       
       // Init PaymentType     
-      PaymentType.LoadMoney loadMoney = new PaymentType.LoadMoney(amount, BILL_URL, creditCardOption, new CitrusUser("developercitrus@gmail.com","9876543210"));
+      PaymentType.LoadMoney loadMoney = new PaymentType.LoadMoney(amount, LOAD_MONEY_RETURN_URL, creditCardOption, new CitrusUser("developercitrus@gmail.com","9876543210"));
       // Call LoadMoney
       citrusClient.LoadMoney(loadMoney, new Callback<TransactionResponse>() {
       
@@ -304,7 +307,7 @@ This feature is used for loading money to Citrus wallet.
       //Note: The Token for sandbox and production will be different
       
       // Init PaymentType     
-      PaymentType.LoadMoney loadMoney = new PaymentType.LoadMoney(amount, BILL_URL, netbankingOption, new CitrusUser("developercitrus@gmail.com","9876543210"));
+      PaymentType.LoadMoney loadMoney = new PaymentType.LoadMoney(amount, LOAD_MONEY_RETURN_URL, netbankingOption, new CitrusUser("developercitrus@gmail.com","9876543210"));
       // Call LoadMoney
       citrusClient.LoadMoney(loadMoney, new Callback<TransactionResponse>() {
       

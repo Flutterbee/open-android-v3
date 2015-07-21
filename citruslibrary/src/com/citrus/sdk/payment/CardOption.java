@@ -18,6 +18,7 @@ import android.graphics.drawable.Drawable;
 import android.text.TextUtils;
 
 import com.citrus.sdk.classes.Month;
+import com.citrus.sdk.classes.PGHealth;
 import com.citrus.sdk.classes.Year;
 
 import org.json.JSONArray;
@@ -113,7 +114,7 @@ public abstract class CardOption extends PaymentOption {
     /**
      * Get the type of the card, i.e. DEBIT or CREDIT.
      *
-     * @return
+     * @return type of the card in string, i.e. debit or credit.
      */
     public abstract String getCardType();
 
@@ -157,6 +158,12 @@ public abstract class CardOption extends PaymentOption {
 
     public void setNickName(String nickName) {
         this.nickName = nickName;
+    }
+
+    @Override
+    public PGHealth getPgHealth() {
+        // Currently PGHealth for card schemes is not supported. Hence returning GOOD everytime.
+        return PGHealth.GOOD;
     }
 
     private String normalizeCardNumber(String number) {
@@ -231,7 +238,7 @@ public abstract class CardOption extends PaymentOption {
      * <p/>
      * Only AMEX has 4 digit CVV, else all cards have 3 digit CVV.
      *
-     * @return
+     * @return return 3 or 4 depending upon the card scheme.
      */
     public int getCVVLength() {
         int cvvLength = 3;
@@ -264,13 +271,13 @@ public abstract class CardOption extends PaymentOption {
             e.printStackTrace();
         }
 
-        return object != null ? object.toString() : null;
+        return object.toString();
     }
 
     /**
      * Denotes the type of the card. i.e. Credit or Debit.
      */
-    public static enum CardType {
+    public enum CardType {
         DEBIT {
             public String getCardType() {
                 return "debit";
@@ -284,12 +291,12 @@ public abstract class CardOption extends PaymentOption {
         /**
          * Get the type of the card in string, i.e. debit or credit.
          *
-         * @return
+         * @return type of the card in string, i.e. debit or credit.
          */
         public abstract String getCardType();
     }
 
-    public static enum CardScheme {
+    public enum CardScheme {
         VISA, MASTER_CARD, MAESTRO, DINERS, JCB, AMEX, DISCOVER;
 
         public static CardScheme getCardScheme(String cardScheme) {
@@ -342,6 +349,16 @@ public abstract class CardOption extends PaymentOption {
 
             }
             return cardScheme;
+        }
+
+        public static int getCVVLength(String cardNumber) {
+            CardScheme scheme = getCardSchemeUsingNumber(cardNumber);
+
+            if (scheme == AMEX) {
+                return 4;
+            } else {
+                return 3;
+            }
         }
     }
 }
