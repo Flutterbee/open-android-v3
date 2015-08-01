@@ -345,7 +345,7 @@ public class CitrusClient {
 
                 @Override
                 public void failure(RetrofitError error) {
-
+                    sendError(callback, error);
                 }
             });
         }
@@ -524,32 +524,45 @@ public class CitrusClient {
                                 OauthToken token = new OauthToken(mContext, PREPAID_TOKEN);
                                 token.createToken(accessToken.getJSON());///grant Type password token saved
                                 token.saveUserDetails(emailId, null);//save email ID of the signed in user
-                                RetroFitClient.setInterCeptor();
-                                EventBus.getDefault().register(CitrusClient.this);
-                                retrofitClient.getCookie(emailId, password, "true", new retrofit.Callback<String>() {
+
+                                // Activate the user's prepaid account, if not already.
+                                activatePrepaidUser(new Callback<Amount>() {
                                     @Override
-                                    public void success(String s, Response response) {
-                                        // NOOP
-                                        // This method will never be called.
+                                    public void success(Amount amount) {
+                                        RetroFitClient.setInterCeptor();
+                                        EventBus.getDefault().register(CitrusClient.this);
+
+                                        retrofitClient.getCookie(emailId, password, "true", new retrofit.Callback<String>() {
+                                            @Override
+                                            public void success(String s, Response response) {
+                                                // NOOP
+                                                // This method will never be called.
+                                            }
+
+                                            @Override
+                                            public void failure(RetrofitError error) {
+                                                if (prepaidCookie != null) {
+                                                    cookieManager = CookieManager.getInstance();
+                                                    PersistentConfig config = new PersistentConfig(mContext);
+                                                    if (config.getCookieString() != null) {
+                                                        cookieManager.getInstance().removeSessionCookie();
+                                                    }
+                                                    CookieSyncManager.createInstance(mContext);
+                                                    config.setCookie(prepaidCookie);
+                                                } else {
+                                                    Logger.d("PREPAID LOGIN UNSUCCESSFUL");
+                                                }
+                                                EventBus.getDefault().unregister(CitrusClient.this);
+
+                                                // Since we have a got the cookie, we are giving the callback.
+                                                sendResponse(callback, new CitrusResponse(ResponseMessages.SUCCESS_MESSAGE_SIGNIN, Status.SUCCESSFUL));
+                                            }
+                                        });
                                     }
 
                                     @Override
-                                    public void failure(RetrofitError error) {
-                                        if (prepaidCookie != null) {
-                                            cookieManager = CookieManager.getInstance();
-                                            PersistentConfig config = new PersistentConfig(mContext);
-                                            if (config.getCookieString() != null) {
-                                                cookieManager.getInstance().removeSessionCookie();
-                                            }
-                                            CookieSyncManager.createInstance(mContext);
-                                            config.setCookie(prepaidCookie);
-                                        } else {
-                                            Logger.d("PREPAID LOGIN UNSUCCESSFUL");
-                                        }
-                                        EventBus.getDefault().unregister(CitrusClient.this);
-
-                                        // Since we have a got the cookie, we are giving the callback.
-                                        sendResponse(callback, new CitrusResponse(ResponseMessages.SUCCESS_MESSAGE_SIGNIN, Status.SUCCESSFUL));
+                                    public void error(CitrusError error) {
+                                        sendError(callback, error);
                                     }
                                 });
                             }
@@ -597,7 +610,9 @@ public class CitrusClient {
                             if (accessToken.getHeaderAccessToken() != null) {
                                 final OauthToken token = new OauthToken(mContext, PREPAID_TOKEN);
                                 token.createToken(accessToken.getJSON());///grant Type password token saved
+
                                 // Fetch the associated emailId and save the emailId.
+                                // This is async since we are just updating the details and not dependent upon the response.
                                 getMemberInfo(null, mobileNo, new Callback<MemberInfo>() {
                                     @Override
                                     public void success(MemberInfo memberInfo) {
@@ -614,33 +629,43 @@ public class CitrusClient {
                                     }
                                 });
 
-
-                                RetroFitClient.setInterCeptor();
-                                EventBus.getDefault().register(CitrusClient.this);
-                                retrofitClient.getCookie(mobileNo, password, "true", new retrofit.Callback<String>() {
+                                // Activate user's prepaid account, if not already.
+                                activatePrepaidUser(new Callback<Amount>() {
                                     @Override
-                                    public void success(String s, Response response) {
-                                        // NOOP
-                                        // This method will never be called.
+                                    public void success(Amount amount) {
+                                        RetroFitClient.setInterCeptor();
+                                        EventBus.getDefault().register(CitrusClient.this);
+                                        retrofitClient.getCookie(mobileNo, password, "true", new retrofit.Callback<String>() {
+                                            @Override
+                                            public void success(String s, Response response) {
+                                                // NOOP
+                                                // This method will never be called.
+                                            }
+
+                                            @Override
+                                            public void failure(RetrofitError error) {
+                                                if (prepaidCookie != null) {
+                                                    cookieManager = CookieManager.getInstance();
+                                                    PersistentConfig config = new PersistentConfig(mContext);
+                                                    if (config.getCookieString() != null) {
+                                                        cookieManager.getInstance().removeSessionCookie();
+                                                    }
+                                                    CookieSyncManager.createInstance(mContext);
+                                                    config.setCookie(prepaidCookie);
+                                                } else {
+                                                    Logger.d("PREPAID LOGIN UNSUCCESSFUL");
+                                                }
+                                                EventBus.getDefault().unregister(CitrusClient.this);
+
+                                                // Since we have a got the cookie, we are giving the callback.
+                                                sendResponse(callback, new CitrusResponse(ResponseMessages.SUCCESS_MESSAGE_SIGNIN, Status.SUCCESSFUL));
+                                            }
+                                        });
                                     }
 
                                     @Override
-                                    public void failure(RetrofitError error) {
-                                        if (prepaidCookie != null) {
-                                            cookieManager = CookieManager.getInstance();
-                                            PersistentConfig config = new PersistentConfig(mContext);
-                                            if (config.getCookieString() != null) {
-                                                cookieManager.getInstance().removeSessionCookie();
-                                            }
-                                            CookieSyncManager.createInstance(mContext);
-                                            config.setCookie(prepaidCookie);
-                                        } else {
-                                            Logger.d("PREPAID LOGIN UNSUCCESSFUL");
-                                        }
-                                        EventBus.getDefault().unregister(CitrusClient.this);
-
-                                        // Since we have a got the cookie, we are giving the callback.
-                                        sendResponse(callback, new CitrusResponse(ResponseMessages.SUCCESS_MESSAGE_SIGNIN, Status.SUCCESSFUL));
+                                    public void error(CitrusError error) {
+                                        sendError(callback, error);
                                     }
                                 });
                             }
@@ -1193,8 +1218,6 @@ public class CitrusClient {
                         if (paymentOptionObj != null) {
                             merchantPaymentOption = MerchantPaymentOption.getMerchantPaymentOptions(paymentOptionObj);
 
-                            saveMerchantPaymentOptions(merchantPaymentOption);
-
                             sendResponse(callback, merchantPaymentOption);
 
                         } else {
@@ -1231,8 +1254,6 @@ public class CitrusClient {
                         JsonObject paymentOptionObj = element.getAsJsonObject();
                         if (paymentOptionObj != null) {
                             merchantPaymentOption = MerchantPaymentOption.getMerchantPaymentOptions(paymentOptionObj);
-
-                            saveMerchantPaymentOptions(merchantPaymentOption);
 
                             sendResponse(callback, merchantPaymentOption);
 
@@ -1542,18 +1563,18 @@ public class CitrusClient {
                         JSONObject jsonObject = new JSONObject(message);
                         // If the response does not contain error_description then look for errorMessage.
                         String errorMessage = null;
-                        if (jsonObject.optString("error_description") != null) {
+                        if (!TextUtils.isEmpty(jsonObject.optString("error_description"))) {
                             errorMessage = jsonObject.optString("error_description");
-                        } else if (jsonObject.optString("errorMessage") != null) {
+                        } else if (!TextUtils.isEmpty(jsonObject.optString("errorMessage"))) {
                             errorMessage = jsonObject.optString("errorMessage");
                         } else {
-                            error.getMessage();
+                            errorMessage = message;
                         }
 
                         citrusError = new CitrusError(errorMessage, Status.FAILED);
                     } catch (JSONException e) {
                         e.printStackTrace();
-                        citrusError = new CitrusError(error.getMessage(), Status.FAILED);
+                        citrusError = new CitrusError(message, Status.FAILED);
                     }
                 } else {
                     citrusError = new CitrusError(error.getMessage(), Status.FAILED);
@@ -1562,12 +1583,6 @@ public class CitrusClient {
 
             sendError(callback, citrusError);
         }
-    }
-
-    private void saveMerchantPaymentOptions(MerchantPaymentOption merchantPaymentOption) {
-        this.merchantPaymentOption = merchantPaymentOption;
-
-        // TODO Save these values in DB
     }
 
     // Getters and setters.
