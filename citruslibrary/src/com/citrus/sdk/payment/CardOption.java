@@ -17,13 +17,13 @@ import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.text.TextUtils;
 
-import com.citrus.sdk.classes.Month;
-import com.citrus.sdk.classes.PGHealth;
-import com.citrus.sdk.classes.Year;
-
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import com.citrus.sdk.classes.Month;
+import com.citrus.sdk.classes.PGHealth;
+import com.citrus.sdk.classes.Year;
 
 /**
  * Created by salil on 13/2/15.
@@ -263,6 +263,7 @@ public abstract class CardOption extends PaymentOption {
             option.put("scheme", cardScheme.toString());
             option.put("expiryDate", cardExpiry);
             option.put("type", getCardType());
+            option.put("name", getName());
             paymentOptions.put(option);
 
             object.put("paymentOptions", paymentOptions);

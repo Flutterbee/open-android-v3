@@ -19,9 +19,9 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.text.TextUtils;
 
-import com.citrus.sdk.classes.PGHealth;
-
 import org.json.JSONObject;
+
+import com.citrus.sdk.classes.PGHealth;
 
 import static com.citrus.sdk.payment.CardOption.CardScheme;
 
@@ -89,6 +89,10 @@ public abstract class PaymentOption implements Parcelable {
 
     public String getToken() {
         return token;
+    }
+
+    public void setName(String nickname) {
+        this.name = nickname;
     }
 
     public boolean isSavePaymentOption() {
